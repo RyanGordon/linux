@@ -2011,5 +2011,8 @@ void __init setup_nr_node_ids(void);
 static inline void setup_nr_node_ids(void) {}
 #endif
 
+typedef int (*network_mmap_fault_handler)(struct vm_area_struct *vma, struct vm_fault *vmf);
+extern void set_kmod_network_mmap_fault_handler(network_mmap_fault_handler func);
+
 #endif /* __KERNEL__ */
 #endif /* _LINUX_MM_H */

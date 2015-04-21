@@ -1400,6 +1400,54 @@ out:
 	return retval;
 }
 
+network_mmap_fault_handler network_mmap_fault_handler_ptr = NULL;
+
+static int default_network_mmap_fault_handler(struct vm_area_struct *vma, struct vm_fault *vmf) {
+	if (network_mmap_fault_handler_ptr) {
+		return network_mmap_fault_handler_ptr(vma, vmf);
+	}
+
+	return VM_FAULT_SIGBUS;
+}
+
+static const struct vm_operations_struct network_mmap_vm_ops = {
+	.fault = default_network_mmap_fault_handler,
+};
+
+SYSCALL_DEFINE6(network_mmap_pgoff, unsigned long, addr, unsigned long, len,
+		unsigned long, prot, unsigned long, flags,
+		unsigned long, fd, unsigned long, pgoff)
+{
+	unsigned long retval;
+	struct vm_area_struct *vma;
+
+	printk(KERN_INFO "network_mmap_pgoff: 1. Entering network_mmap_pgoff\n");
+
+	printk(KERN_INFO "network_mmap_pgoff: 2. Calling sys_mmap_pgoff\n");
+	retval = sys_mmap_pgoff(addr, len, prot, flags, fd, pgoff);
+	printk(KERN_INFO "network_mmap_pgoff: 3. Completed sys_mmap_pgoff: %lu\n", retval);
+
+	printk(KERN_INFO "network_mmap_pgoff: 4. Getting vma\n");
+	// Override the fault handler with our own!
+	vma = kmem_cache_zalloc(vm_area_cachep, GFP_KERNEL);
+	if (!vma) {
+		retval = -ENOMEM;
+	}
+	printk(KERN_INFO "network_mmap_pgoff: 5. Completed getting vma: %lu\n", retval);
+	printk(KERN_INFO "network_mmap_pgoff: 6. Overriding fault handler: %p\n", network_mmap_fault_handler_ptr);
+	vma->vm_ops = &network_mmap_vm_ops;
+	printk(KERN_INFO "network_mmap_pgoff: 7. Completed overriding fault handler\n");
+
+	return retval;
+}
+
+void set_kmod_network_mmap_fault_handler(network_mmap_fault_handler func) {
+	printk(KERN_INFO "set_kmod_network_mmap_fault_handler: 1. Entering set_kmod_network_mmap_fault_handler: %p\n", func);
+	network_mmap_fault_handler_ptr = func;
+	printk(KERN_INFO "set_kmod_network_mmap_fault_handler: 2. Completed setting set_kmod_network_mmap_fault_handler: %p\n", network_mmap_fault_handler_ptr);
+}
+EXPORT_SYMBOL(set_kmod_network_mmap_fault_handler);
+
 #ifdef __ARCH_WANT_SYS_OLD_MMAP
 struct mmap_arg_struct {
 	unsigned long addr;
