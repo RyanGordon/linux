@@ -1,7 +1,7 @@
 VERSION = 3
 PATCHLEVEL = 13
 SUBLEVEL = 0
-EXTRAVERSION = -networkmmapv0.1
+EXTRAVERSION = -networkmmapv0.7
 NAME = One Giant Leap for Frogkind
 
 # *DOCUMENTATION*
