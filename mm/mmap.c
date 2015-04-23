@@ -1403,11 +1403,16 @@ out:
 network_mmap_fault_handler network_mmap_fault_handler_ptr = NULL;
 
 static int default_network_mmap_fault_handler(struct vm_area_struct *vma, struct vm_fault *vmf) {
+	int retval = VM_FAULT_SIGBUS;
+	printk(KERN_INFO "1. Calling default_network_mmap_fault_handler: %016llX\n", (uint64_t)network_mmap_fault_handler_ptr);
 	if (network_mmap_fault_handler_ptr) {
-		return network_mmap_fault_handler_ptr(vma, vmf);
+		printk(KERN_INFO "2. Calling network_mmap_fault_handler_ptr\n");
+		retval = network_mmap_fault_handler_ptr(vma, vmf);
+		printk(KERN_INFO "3. Done calling network_mmap_fault_handler_ptr: %d\n", retval);
 	}
+	printk(KERN_INFO "4. default_network_mmap_fault_handler: %d\n", retval);
 
-	return VM_FAULT_SIGBUS;
+	return retval;
 }
 
 static const struct vm_operations_struct network_mmap_vm_ops = {
@@ -1420,6 +1425,7 @@ SYSCALL_DEFINE6(network_mmap_pgoff, unsigned long, addr, unsigned long, len,
 {
 	unsigned long retval;
 	struct vm_area_struct *vma;
+	struct mm_struct *mm = current->mm;
 
 	printk(KERN_INFO "network_mmap_pgoff: 1. Entering network_mmap_pgoff\n");
 
@@ -1427,14 +1433,19 @@ SYSCALL_DEFINE6(network_mmap_pgoff, unsigned long, addr, unsigned long, len,
 	retval = sys_mmap_pgoff(addr, len, prot, flags, fd, pgoff);
 	printk(KERN_INFO "network_mmap_pgoff: 3. Completed sys_mmap_pgoff: %lu\n", retval);
 
+	// Was there an error? Just return the error code
+	if ((signed long)retval < 0 && (signed long)retval >= -133) {
+		return retval;
+	}
+
 	printk(KERN_INFO "network_mmap_pgoff: 4. Getting vma\n");
 	// Override the fault handler with our own!
-	vma = kmem_cache_zalloc(vm_area_cachep, GFP_KERNEL);
+	vma = find_vma(mm, retval); // retval contains our address at the start of our mmaped region
 	if (!vma) {
 		retval = -ENOMEM;
 	}
-	printk(KERN_INFO "network_mmap_pgoff: 5. Completed getting vma: %lu\n", retval);
-	printk(KERN_INFO "network_mmap_pgoff: 6. Overriding fault handler: %p\n", network_mmap_fault_handler_ptr);
+	printk(KERN_INFO "network_mmap_pgoff: 5. Completed getting vma: %016llX\n", (uint64_t)vma);
+	printk(KERN_INFO "network_mmap_pgoff: 6. Overriding fault handler to: %016llX\n", (uint64_t)&network_mmap_vm_ops);
 	vma->vm_ops = &network_mmap_vm_ops;
 	printk(KERN_INFO "network_mmap_pgoff: 7. Completed overriding fault handler\n");
 
@@ -1442,9 +1453,9 @@ SYSCALL_DEFINE6(network_mmap_pgoff, unsigned long, addr, unsigned long, len,
 }
 
 void set_kmod_network_mmap_fault_handler(network_mmap_fault_handler func) {
-	printk(KERN_INFO "set_kmod_network_mmap_fault_handler: 1. Entering set_kmod_network_mmap_fault_handler: %p\n", func);
+	printk(KERN_INFO "set_kmod_network_mmap_fault_handler: 1. Entering set_kmod_network_mmap_fault_handler: %016llX\n", (uint64_t)func);
 	network_mmap_fault_handler_ptr = func;
-	printk(KERN_INFO "set_kmod_network_mmap_fault_handler: 2. Completed setting set_kmod_network_mmap_fault_handler: %p\n", network_mmap_fault_handler_ptr);
+	printk(KERN_INFO "set_kmod_network_mmap_fault_handler: 2. Completed setting set_kmod_network_mmap_fault_handler: %016llX\n", (uint64_t)network_mmap_fault_handler_ptr);
 }
 EXPORT_SYMBOL(set_kmod_network_mmap_fault_handler);
 
