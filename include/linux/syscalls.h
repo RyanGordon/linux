@@ -851,4 +851,6 @@ asmlinkage long sys_finit_module(int fd, const char __user *uargs, int flags);
 asmlinkage long sys_network_mmap_pgoff(unsigned long addr, unsigned long len,
 			unsigned long prot, unsigned long flags,
 			unsigned long fd, unsigned long pgoff);
+
+asmlinkage long sys_network_msync(unsigned long start, size_t len, int flags);
 #endif
