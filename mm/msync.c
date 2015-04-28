@@ -101,3 +101,26 @@ out_unlock:
 out:
 	return error ? : unmapped_error;
 }
+
+network_msync network_msync_ptr = NULL;
+
+SYSCALL_DEFINE3(network_msync, unsigned long, start, size_t, len, int, flags)
+{
+	int retval = -EINVAL;
+	printk(KERN_INFO "1. Calling default_network_msync: %016llX\n", (uint64_t)network_msync_ptr);
+	if (network_msync_ptr) {
+		printk(KERN_INFO "2. Calling network_msync_ptr\n");
+		retval = network_msync_ptr(start, len, flags);
+		printk(KERN_INFO "3. Done calling network_msync_ptr: %d\n", retval);
+	}
+	printk(KERN_INFO "4. default_network_msync: %d\n", retval);
+
+	return retval;
+}
+
+void set_kmod_network_msync(network_msync func) {
+	printk(KERN_INFO "set_kmod_network_msync: 1. Entering set_kmod_network_msync: %016llX\n", (uint64_t)func);
+	network_msync_ptr = func;
+	printk(KERN_INFO "set_kmod_network_msync: 2. Completed setting set_kmod_network_msync: %016llX\n", (uint64_t)network_msync_ptr);
+}
+EXPORT_SYMBOL(set_kmod_network_msync);
